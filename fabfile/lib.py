@@ -27,6 +27,7 @@ def create_virtualenv(venv_path, user, permissions='0750'):
     else:
         puts(info='virtualenv already exists at %s' % venv_path)
 
+
 def install_pip_dependencies(requirements_path):
     """
     Install dependencies using pip from the specified requirements file
@@ -38,11 +39,30 @@ def install_pip_dependencies(requirements_path):
 
     puts(success="Dependencies installed")
 
-def django_syncdb(project_dir, production=False):
+
+def django_runserver(manage_dir, settings_mod=None):
+    """
+    Starts django's runserver with its defaults
+
+    @param manage_dir The directory containing manage.py
+    @param settings_mod The settings module to use
+    """
+    puts(info="Running runserver")
+    _settings_mod = ""
+    if settings_mod: 
+        _settings_mod = "--settings=%s" % settings_mod
+        puts(info = "\twith %s" % _settings_mod)
+
+    with prefix(activate_venv()):
+        env.run(os.path.join(manage_dir, 'manage.py runserver %s' % _settings_mod))
+
+
+
+def django_syncdb(manage_dir, production=False):
     """
     Sets up the database by running django's syncdb command
 
-    @param project_dir The directory containing manage.py
+    @param manage_dir The directory containing manage.py
     @param production Whether to use production settings
     """
     puts(info="Running syncdb")
@@ -51,17 +71,18 @@ def django_syncdb(project_dir, production=False):
         _settings_mod = "--settings=settings_production"
 
     with prefix(activate_venv()):
-        env.run(os.path.join(project_dir, 'manage.py') + 
+        env.run(os.path.join(manage_dir, 'manage.py') + 
             " syncdb %s" % _settings_mod)
 
     puts(success='Database synced')
 
-def django_sync_and_migrate(project_dir, production=False):
+
+def django_sync_and_migrate(manage_dir, production=False):
     """
     Sets up the database by running django's syncdb command with
     --noinput and --migrate
 
-    @param project_dir The directory containing manage.py
+    @param manage_dir The directory containing manage.py
     @param production Whether to use production settings
     """
     puts(info="Running syncdb with --migrate")
@@ -71,35 +92,37 @@ def django_sync_and_migrate(project_dir, production=False):
         _settings_mod = "--settings=settings_production"
 
     with prefix(activate_venv()):
-        env.run(os.path.join(project_dir, 'manage.py') + 
+        env.run(os.path.join(manage_dir, 'manage.py') + 
             " syncdb --migrate --noinput %s" % _settings_mod)
 
     puts(success='Database synced')
 
-def django_load_fixture(project_dir, path):
+
+def django_load_fixture(manage_dir, path):
     """
     Load fixtures from a specific location
 
-    @param project_dir The directory containing manage.py
+    @param manage_dir The directory containing manage.py
     @param production The path to the fixture file to load
     """
     puts(info="Loading fixture at %s" % path)
 
-    full_path = os.path.join(project_dir, path)
+    full_path = os.path.join(manage_dir, path)
 
     if not files.exists(full_path):
         puts(error='Fixture file %s not found' % full_path)
 
     with prefix(activate_venv()):
-        env.run(os.path.join(project_dir, 'manage.py') + " loaddata " + full_path)
+        env.run(os.path.join(manage_dir, 'manage.py') + " loaddata " + full_path)
 
     puts(success='Fixture loaded')
 
-def django_migrate_schema(project_dir, production=False):
+
+def django_migrate_schema(manage_dir, production=False):
     """
     Migrates the database schema
 
-    @param project_dir The directory containing manage.py
+    @param manage_dir The directory containing manage.py
     @param production Whether to use production settings
     """
     puts(info="Applying migrations")
@@ -108,16 +131,17 @@ def django_migrate_schema(project_dir, production=False):
     if production: 
         _settings_mod = "--settings=settings_production"
     with prefix(activate_venv()):
-        env.run(os.path.join(project_dir, 'manage.py') + 
+        env.run(os.path.join(manage_dir, 'manage.py') + 
                 " migrate --all %s" % _settings_mod)
 
     puts(success="Migrations applied")
 
-def django_publish_static_content(project_dir, production=False):
+
+def django_publish_static_content(manage_dir, production=False):
     """
     Collects django's static content and publishes it to the static directory.
 
-    @param project_dir The directory containing manage.py
+    @param manage_dir The directory containing manage.py
     @param production Whether to use production settings
     """
     puts(info="Collecting static content")
@@ -125,10 +149,11 @@ def django_publish_static_content(project_dir, production=False):
     if production: 
         _settings_mod = "--settings=settings_production"
     with prefix(activate_venv()):
-        env.run(os.path.join(project_dir, 'manage.py') +
+        env.run(os.path.join(manage_dir, 'manage.py') +
             ' collectstatic --noinput %s' % _settings_mod)
 
     puts(success="Static content published")
+
 
 def git_clone(repo_path, destination, user):
     """
@@ -149,6 +174,7 @@ def git_clone(repo_path, destination, user):
     env.run('git clone %s %s' % (repo_path, destination))
     puts(success="Repository cloned")
 
+
 def git_pull(destination):
     """
     Update the git repository at destination.
@@ -165,6 +191,7 @@ def git_pull(destination):
         puts(error="Unable to pull - destination directory doesn't exist")
         abort("Aborting")
 
+
 def git_init_submodules(git_path):
     """
     Initialise and update git submodules
@@ -176,18 +203,22 @@ def git_init_submodules(git_path):
         env.run('git submodule update --init')
     puts(success="Submodules initialised")
 
-def compile_less_css(project_dir):
+
+def compile_less_css(utils_dir):
     """
     Compiles less files to css
+
+    @param utils_dir The directory containing the plessc.py file
     """
     puts(info="Compiling LESS to css")
-    if files.exists(os.path.join(project_dir, "plessc.py")):
-        with cd(project_dir):
+    if files.exists(os.path.join(utils_dir, "plessc.py")):
+        with cd(manage_dir):
             with prefix(activate_venv()):
                 env.run('./plessc.py')
                 puts(success="Stylesheets compiled")
     else:
         puts(info="plessc.py not found - skipping")
+
 
 def conditionally_install_and_patch_pil(requirements_file_path, venv_dir,
         patch_path):
@@ -217,7 +248,8 @@ def conditionally_install_and_patch_pil(requirements_file_path, venv_dir,
     else:
         puts(info="PIL doesn't need to be installed")
 
-def backup_database(project_name, project_dir, destination_dir):
+
+def backup_database(project_name, manage_dir, destination_dir):
     """
     Backs-up the database
     """
@@ -229,7 +261,7 @@ def backup_database(project_name, project_dir, destination_dir):
     puts(info="Backing up database")
 
     with prefix(activate_venv()):
-        with cd(project_dir):
+        with cd(manage_dir):
             DATABASE_USER = env.run("python -c 'import settings_production;"
                 "print settings_production.DATABASES[\"default\"][\"USER\"]'")
             DATABASE_PASSWORD = env.run("python -c 'import settings_production;"
@@ -255,6 +287,7 @@ def backup_database(project_name, project_dir, destination_dir):
     sudo('mv %s %s' % (temp_dump_path, destination_dir))
     puts(success="Database moved to %s" % destination_dir)
 
+
 def roll_site_forward(deployment_dir):
     """
     Updates the symlinks to point to a later timestamped version of the
@@ -268,6 +301,7 @@ def roll_site_forward(deployment_dir):
             env.run('unlink live')
         env.run('ln -s %s live' % (newest_deployment))
         puts(success="Symlink rolled forward")
+
 
 def restart_services():
     """
@@ -283,6 +317,7 @@ def restart_services():
     
     # restart memcached
     sudo('/etc/init.d/memcached restart')
+
 
 def prune_directory(directory, pattern, max_entries):
     """

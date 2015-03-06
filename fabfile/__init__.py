@@ -1,3 +1,4 @@
+from pprint import pprint
 import os.path
 from datetime import datetime
 
@@ -24,7 +25,7 @@ from lib import *
 #
 
 # path to git repository
-env.repo_path = 'git://github.com/boosh/pwlocker.git'
+env.repo_path = ''
 
 # get the project name, e.g. healthcms
 env.project_name = os.path.basename(os.path.dirname(env.real_fabfile))
@@ -45,22 +46,37 @@ env.run = run
 
 @task
 @hosts('localhost')
+def runserver(settings = None):
+    """
+    Runs runserver
+
+    @param settings The settings module to use
+    """
+    env.project_root = os.path.realpath(os.path.join(env.real_fabfile, '..'))
+    __build_env_dictionary()
+    env.run = lrun
+
+    django_runserver(env.project_root, settings)
+
+@task
+@hosts('localhost')
 def build():
     """
     Build a local development environment.
     """
     # where the project directory is
-    env.project_root = os.path.realpath(os.path.join(env.real_fabfile, '..', '..'))
+    env.project_root = os.path.realpath(os.path.join(env.real_fabfile, '..'))
     env.run = lrun
-
     __build_env_dictionary()
 
+    pprint(env)
+
     # create_virtualenv(env.virtualenv_dir, env.user)
-    install_pip_dependencies(env.requirements_path)
+    # install_pip_dependencies(env.requirements_path)
     # git_init_submodules(env.project_root)
-    django_syncdb(env.project_dir)
-    django_migrate_schema(env.project_dir)
-    django_load_fixture(env.project_dir, 'fixtures/initial_data.json')
+    # django_syncdb(env.project_dir)
+    # django_migrate_schema(env.project_dir)
+    # django_load_fixture(env.project_dir, 'fixtures/initial_data.json')
     puts(success="Build finished")
 
 @task
@@ -74,6 +90,7 @@ def deploy():
     @todo - Extend this so it will provision new servers by:
        - installing nginx
        - installing supervisord
+       - installing pillow
        - uploading base configurations using files.upload_template
        - creating links in /etc/nginx/conf.d to the project config file
        - doing the same for supervisord
@@ -94,21 +111,21 @@ def deploy():
     create_virtualenv(env.virtualenv_dir, env.user)
     # if we need to install PIL, we need to do it ourselves. It must be
     # installed and patched otherwise we won't have JPEG or PNG support
-    conditionally_install_and_patch_pil(env.requirements_path,
-        env.virtualenv_dir, os.path.join(env.fab_dir, 'PIL.setup.py.diff'))
+    # conditionally_install_and_patch_pil(env.requirements_path,
+        # env.virtualenv_dir, os.path.join(env.fab_dir, 'PIL.setup.py.diff'))
 
     install_pip_dependencies(env.requirements_path)
-    compile_less_css(env.project_dir)
+    compile_less_css(env.project_root)
 
     # from this point on, we're making changes that will affect the live site
 # perhaps we should display a banner to disable the site while we perform a
 # backup and migration...
-#    django_syncdb(env.project_dir, True)
-#    django_migrate_schema(env.project_dir, True)
-    django_sync_and_migrate(env.project_dir, True)
-    django_load_fixture(env.project_dir, 'fixtures/initial_data.json')
+#    django_syncdb(env.project_root, True)
+#    django_migrate_schema(env.project_root, True)
+    django_sync_and_migrate(env.project_root, True)
+    django_load_fixture(env.project_root, 'fixtures/initial_data.json')
 
-    django_publish_static_content(env.project_dir)
+    django_publish_static_content(env.project_root)
     roll_site_forward(os.path.dirname(env.project_root))
     restart_services()
     prune_directory(os.path.dirname(env.project_root), 2, 10)
@@ -133,7 +150,7 @@ def in_place_deploy():
     """
     env.user = 'deploy'
 
-    # where the .git directory is
+    # where the project directory is
     env.project_root = os.path.realpath(os.path.join(
         '/home', env.user, env.production_projects_directory,
         env.project_name, 'live'))
@@ -142,16 +159,16 @@ def in_place_deploy():
 
     git_pull(env.project_root)
 
-    compile_less_css(env.project_dir)
+    compile_less_css(env.project_root)
 
     # from this point on, we're making changes that will affect the live site
 # perhaps we should display a banner to disable the site while we perform a
 # backup and migration...
-    django_sync_and_migrate(env.project_dir, True)
-#    django_syncdb(env.project_dir, True)
-#    django_migrate_schema(env.project_dir, True)
+    django_sync_and_migrate(env.project_root, True)
+#    django_syncdb(env.project_root, True)
+#    django_migrate_schema(env.project_root, True)
 
-    django_publish_static_content(env.project_dir)
+    django_publish_static_content(env.project_root)
     restart_services()
     puts(success="In-place deployment finished")
 
@@ -165,10 +182,10 @@ def __build_env_dictionary():
     env.project_dir = os.path.join(env.project_root, env.project_name)
 
     # the root of the virtualenv
-    env.virtualenv_dir = os.path.join(env.project_dir, env.venv_dir)
+    env.virtualenv_dir = os.path.join(env.project_root, env.venv_dir)
 
     # the directory containing the requirements file and PIL setup diff
-    env.fab_dir = os.path.join(env.project_dir, os.path.basename(env.real_fabfile))
+    env.fab_dir = os.path.join(env.project_root, os.path.basename(env.real_fabfile))
 
     # path to pip's requirements file
-    env.requirements_path = os.path.join(env.fab_dir, 'requirements.txt')
+    env.requirements_path = os.path.join(env.project_root, 'requirements.txt')
