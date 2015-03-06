@@ -69,14 +69,15 @@ def build():
     env.run = lrun
     __build_env_dictionary()
 
-    pprint(env)
+    check_on_path('foobar')
 
-    # create_virtualenv(env.virtualenv_dir, env.user)
-    # install_pip_dependencies(env.requirements_path)
-    # git_init_submodules(env.project_root)
-    # django_syncdb(env.project_dir)
-    # django_migrate_schema(env.project_dir)
-    # django_load_fixture(env.project_dir, 'fixtures/initial_data.json')
+    create_virtualenv(env.virtualenv_dir, env.user)
+    install_pip_dependencies(env.requirements_path)
+    git_init_submodules(env.project_root)
+    django_syncdb(env.project_root)
+    django_migrate_schema(env.project_root)
+    django_load_fixture(env.project_root, 'fixtures/initial_data.json')
+
     puts(success="Build finished")
 
 @task

@@ -16,16 +16,17 @@ call.
 
 def create_virtualenv(venv_path, user, permissions='0750'):
     "Creates a virtualenv"
-    check_on_path('virtualenv')
-    
-    if not files.exists(os.path.join(venv_path, "bin/activate")):
+
+    if files.exists(os.path.join(venv_path, "bin/activate")):
+        puts(info='virtualenv already exists at %s' % venv_path)
+    else:
+        check_on_path('virtualenv')
         create_directories(venv_path, user, permissions)
         puts(info='Creating virtualenv at %s' % venv_path)
         env.run("virtualenv --no-site-packages %s" % venv_path)
-        puts(success='virtualenv created')
+        puts(success='virtualenv created\n')
         return 1
-    else:
-        puts(info='virtualenv already exists at %s' % venv_path)
+        
 
 
 def install_pip_dependencies(requirements_path):
@@ -37,7 +38,7 @@ def install_pip_dependencies(requirements_path):
     with prefix(activate_venv()):
         env.run('pip install -r %s' % requirements_path)
 
-    puts(success="Dependencies installed")
+    puts(success="Dependencies installed\n")
 
 
 def django_runserver(manage_dir, settings_mod=None):
@@ -54,7 +55,8 @@ def django_runserver(manage_dir, settings_mod=None):
         puts(info = "\twith %s" % _settings_mod)
 
     with prefix(activate_venv()):
-        env.run(os.path.join(manage_dir, 'manage.py runserver %s' % _settings_mod))
+        env.run(os.path.join(manage_dir, 
+                            'manage.py runserver %s' % _settings_mod))
 
 
 
@@ -71,10 +73,10 @@ def django_syncdb(manage_dir, production=False):
         _settings_mod = "--settings=settings_production"
 
     with prefix(activate_venv()):
-        env.run(os.path.join(manage_dir, 'manage.py') + 
-            " syncdb %s" % _settings_mod)
+        env.run(os.path.join(manage_dir, 
+                            'manage.py syncdb --noinput %s' % _settings_mod))
 
-    puts(success='Database synced')
+    puts(success='Database synced\n')
 
 
 def django_sync_and_migrate(manage_dir, production=False):
@@ -92,10 +94,10 @@ def django_sync_and_migrate(manage_dir, production=False):
         _settings_mod = "--settings=settings_production"
 
     with prefix(activate_venv()):
-        env.run(os.path.join(manage_dir, 'manage.py') + 
-            " syncdb --migrate --noinput %s" % _settings_mod)
+        env.run(os.path.join(manage_dir, 
+                            'manage.py syncdb --migrate --noinput %s' % _settings_mod))
 
-    puts(success='Database synced')
+    puts(success='Database synced\n')
 
 
 def django_load_fixture(manage_dir, path):
@@ -113,9 +115,10 @@ def django_load_fixture(manage_dir, path):
         puts(error='Fixture file %s not found' % full_path)
 
     with prefix(activate_venv()):
-        env.run(os.path.join(manage_dir, 'manage.py') + " loaddata " + full_path)
+        env.run(os.path.join(manage_dir, 
+                            'manage.py loaddata ' + full_path))
 
-    puts(success='Fixture loaded')
+    puts(success='Fixture loaded\n')
 
 
 def django_migrate_schema(manage_dir, production=False):
@@ -130,11 +133,12 @@ def django_migrate_schema(manage_dir, production=False):
     _settings_mod = ""
     if production: 
         _settings_mod = "--settings=settings_production"
+    
     with prefix(activate_venv()):
-        env.run(os.path.join(manage_dir, 'manage.py') + 
-                " migrate --all %s" % _settings_mod)
+        env.run(os.path.join(manage_dir, 
+                            'manage.py migrate --all %s' % _settings_mod))
 
-    puts(success="Migrations applied")
+    puts(success="Migrations applied\n")
 
 
 def django_publish_static_content(manage_dir, production=False):
@@ -152,7 +156,7 @@ def django_publish_static_content(manage_dir, production=False):
         env.run(os.path.join(manage_dir, 'manage.py') +
             ' collectstatic --noinput %s' % _settings_mod)
 
-    puts(success="Static content published")
+    puts(success="Static content published\n")
 
 
 def git_clone(repo_path, destination, user):
@@ -172,7 +176,7 @@ def git_clone(repo_path, destination, user):
             puts(success="Destination directory created")
 
     env.run('git clone %s %s' % (repo_path, destination))
-    puts(success="Repository cloned")
+    puts(success="Repository cloned\n")
 
 
 def git_pull(destination):
@@ -201,7 +205,7 @@ def git_init_submodules(git_path):
     puts(info="Initialising git submodules")
     with cd(git_path):
         env.run('git submodule update --init')
-    puts(success="Submodules initialised")
+    puts(success="Submodules initialised\n")
 
 
 def compile_less_css(utils_dir):
@@ -215,7 +219,7 @@ def compile_less_css(utils_dir):
         with cd(manage_dir):
             with prefix(activate_venv()):
                 env.run('./plessc.py')
-                puts(success="Stylesheets compiled")
+                puts(success="Stylesheets compiled\n")
     else:
         puts(info="plessc.py not found - skipping")
 
@@ -244,7 +248,7 @@ def conditionally_install_and_patch_pil(requirements_file_path, venv_dir,
                 'build', 'PIL', 'setup.py'), patch_path))
             env.run('pip install -I %s --no-download'  % pil_version)
 
-        puts(success="PIL patched and installed")
+        puts(success="PIL patched and installed\n")
     else:
         puts(info="PIL doesn't need to be installed")
 
@@ -285,7 +289,7 @@ def backup_database(project_name, manage_dir, destination_dir):
             create_directories(destination_dir, 'root')
             puts(success="Destination directory created")
     sudo('mv %s %s' % (temp_dump_path, destination_dir))
-    puts(success="Database moved to %s" % destination_dir)
+    puts(success="Database moved to %s\n" % destination_dir)
 
 
 def roll_site_forward(deployment_dir):
@@ -300,7 +304,7 @@ def roll_site_forward(deployment_dir):
         with settings(warn_only=True):
             env.run('unlink live')
         env.run('ln -s %s live' % (newest_deployment))
-        puts(success="Symlink rolled forward")
+        puts(success="Symlink rolled forward\n")
 
 
 def restart_services():

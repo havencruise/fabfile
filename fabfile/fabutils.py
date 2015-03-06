@@ -10,10 +10,12 @@ Functions in this file are utilities that remove complexity from the
 functions in lib.py.
 """
 
-def puts(info=None, success=None, warn=None, error=None):
+def puts(debug = None, info=None, success=None, warn=None, error=None):
     """
     Print a string in different colours
     """
+    if debug:
+        fabric_puts(colors.blue(debug))
     if info:
         fabric_puts(colors.cyan(info))
     elif success:
@@ -27,12 +29,13 @@ def check_on_path(binary):
     """
     Confirms that named binary is installed system-wide.
 
-    @todo - Fix this. It doesn't work.
     """
+    error_msg = "Please make sure you have installed `{binary}` " +\
+                "or the path to `{binary}` is in $PATH"
+
     with settings(warn_only=True):
         if env.run("type '%s'" % binary).failed:
-            puts(error="Error: %s is not on the path" % binary)
-            abort("Aborting")
+            abort(error_msg.format(binary = binary))
 
 def create_directories(path, user, group=None, permission='0750'):
     """
